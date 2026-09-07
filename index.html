@@ -12,13 +12,19 @@
     .btn-categoria-activa { background-color: #1f2937; color: white; }
   </style>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans antialiased min-h-screen flex flex-col">
+<body class="bg-gray-50 text-gray-800 font-sans antialiased min-h-screen flex flex-col relative">
 
+  <!-- NAVEGACIÓN -->
   <nav class="bg-white py-4 px-6 shadow-sm flex justify-between items-center sticky top-0 z-40">
     <div class="font-bold text-xl tracking-wide">MI TIENDA DEMO</div>
-    <div class="flex gap-4">
+    <div class="flex gap-5 items-center">
       <a id="link-instagram" href="#" target="_blank" class="text-gray-600 hover:text-pink-600 transition text-xl"><i class="fa-brands fa-instagram"></i></a>
       <a id="link-whatsapp" href="#" target="_blank" class="text-gray-600 hover:text-green-500 transition text-xl"><i class="fa-brands fa-whatsapp"></i></a>
+      <!-- BOTÓN DEL CARRITO -->
+      <button onclick="abrirCarrito()" class="relative text-gray-800 hover:text-blue-600 transition text-xl ml-2">
+        <i class="fa-solid fa-cart-shopping"></i>
+        <span id="badge-carrito" class="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold h-4 w-4 rounded-full flex items-center justify-center">0</span>
+      </button>
     </div>
   </nav>
 
@@ -45,6 +51,7 @@
     &copy; 2026 Creado por Vos. Demo de E-commerce.
   </footer>
 
+  <!-- MODAL DE PRODUCTO (VISTA PREVIA) -->
   <div id="modal-producto" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden items-center justify-center p-4 z-50">
     <div class="bg-white rounded-xl max-w-3xl w-full flex flex-col md:flex-row overflow-hidden shadow-2xl relative max-h-[90vh]">
       <button onclick="cerrarModal()" class="absolute top-3 right-3 bg-white hover:bg-gray-200 text-gray-800 rounded-full w-8 h-8 flex items-center justify-center z-10 shadow"><i class="fa-solid fa-xmark"></i></button>
@@ -60,19 +67,45 @@
         <p id="modal-desc" class="text-gray-600 mb-8 text-sm leading-relaxed"></p>
         
         <div class="mt-auto flex flex-col gap-3">
-          <button onclick="alert('Función de carrito activada para la versión final.')" class="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-3 rounded-lg transition flex justify-center items-center gap-2">
+          <!-- BOTÓN REAL PARA AGREGAR AL CARRITO -->
+          <button onclick="agregarAlCarrito()" class="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-3 rounded-lg transition flex justify-center items-center gap-2">
             <i class="fa-solid fa-cart-plus"></i> Añadir al Carrito
           </button>
-          <a id="modal-btn-mp" href="#" target="_blank" class="w-full bg-[#009ee3] hover:bg-[#0089c7] text-white font-bold py-3 rounded-lg transition flex justify-center items-center gap-2">
-            <i class="fa-solid fa-handshake"></i> Comprar (Mercado Pago)
-          </a>
-          <a id="modal-btn-wpp" href="#" target="_blank" class="w-full bg-[#25D366] hover:bg-[#1ebd5a] text-white font-bold py-3 rounded-lg transition flex justify-center items-center gap-2">
-            <i class="fa-brands fa-whatsapp"></i> Consultar
-          </a>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- PANEL LATERAL DEL CARRITO -->
+  <div id="panel-carrito" class="fixed inset-y-0 right-0 w-full md:w-96 bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 flex flex-col">
+    <div class="p-5 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+      <h3 class="font-bold text-xl text-gray-800"><i class="fa-solid fa-cart-shopping mr-2"></i>Tu Carrito</h3>
+      <button onclick="cerrarCarrito()" class="text-gray-500 hover:text-red-500 transition text-2xl"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    
+    <!-- Lista de productos en el carrito -->
+    <div id="items-carrito" class="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
+      <!-- Se inyecta por JS -->
+    </div>
+
+    <!-- Pie del carrito (Totales y Botones) -->
+    <div class="p-5 border-t border-gray-200 bg-gray-50">
+      <div class="flex justify-between items-center mb-4">
+        <span class="font-bold text-gray-600 uppercase tracking-wider text-sm">Total a pagar:</span>
+        <span id="total-carrito" class="font-bold text-3xl text-green-600">$0</span>
+      </div>
+      
+      <button onclick="finalizarCompra('mp')" class="w-full bg-[#009ee3] hover:bg-[#0089c7] text-white font-bold py-3 rounded-lg transition flex justify-center items-center gap-2 mb-3">
+        <i class="fa-solid fa-handshake"></i> Transferir por Mercado Pago
+      </button>
+      <button onclick="finalizarCompra('wpp')" class="w-full bg-[#25D366] hover:bg-[#1ebd5a] text-white font-bold py-3 rounded-lg transition flex justify-center items-center gap-2">
+        <i class="fa-brands fa-whatsapp"></i> Solo enviar pedido
+      </button>
+    </div>
+  </div>
+
+  <!-- Fondo oscuro para cuando el carrito está abierto -->
+  <div id="overlay-carrito" onclick="cerrarCarrito()" class="fixed inset-0 bg-black bg-opacity-50 hidden z-40 transition-opacity"></div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -93,28 +126,30 @@
     
     let productos = [];
     let categorias = [];
-    let configGral = { whatsapp: "541100000000", instagram: "https://instagram.com", mp_alias: "Alias no configurado" };
+    let configGral = { whatsapp: "", instagram: "", mp_alias: "Alias no configurado" };
+    
+    // Variables del Carrito
+    let carrito = JSON.parse(localStorage.getItem('plantilla_carrito')) || [];
+    let idProductoViendo = null;
 
     const observador = new IntersectionObserver((entradas) => {
       entradas.forEach(e => { if (e.isIntersecting) e.target.classList.add('scroll-visible'); });
     }, { threshold: 0.1 });
 
     async function cargarDatos() {
-      // 1. Cargar Configuración
       const configSnap = await getDoc(doc(db, "configuracion", "general"));
       if(configSnap.exists()) configGral = configSnap.data();
       aplicarConfiguracion();
 
-      // 2. Cargar Categorías
       const catSnap = await getDocs(collection(db, "categorias"));
       catSnap.forEach(d => categorias.push({ id: d.id, ...d.data() }));
 
-      // 3. Cargar Productos
       const prodSnap = await getDocs(collection(db, "productos"));
       prodSnap.forEach(d => productos.push({ id: d.id, ...d.data() }));
 
       renderizarMenu();
       filtrar('todos');
+      actualizarBadgeCarrito();
     }
 
     function aplicarConfiguracion() {
@@ -174,20 +209,128 @@
 
     window.abrirModal = function(id) {
       const prod = productos.find(p => p.id === id);
+      idProductoViendo = prod.id; // Guardamos el ID para el botón del carrito
+      
       document.getElementById('modal-img').src = prod.imagen;
       document.getElementById('modal-cat').innerText = prod.categoria;
       document.getElementById('modal-titulo').innerText = prod.nombre;
       document.getElementById('modal-precio').innerText = `$${prod.precio}`;
       document.getElementById('modal-desc').innerText = prod.descripcion;
       
-      document.getElementById('modal-btn-wpp').href = `https://wa.me/${configGral.whatsapp}?text=Hola! Quiero info sobre: ${encodeURIComponent(prod.nombre)}`;
-      document.getElementById('modal-btn-mp').onclick = () => alert(`Alias de Mercado Pago para abonar:\n${configGral.mp_alias}`);
-      
       document.getElementById('modal-producto').classList.remove('hidden');
       document.getElementById('modal-producto').classList.add('flex');
     }
 
     window.cerrarModal = function() { document.getElementById('modal-producto').classList.add('hidden'); }
+
+    // --- LÓGICA DEL CARRITO DE COMPRAS ---
+
+    window.agregarAlCarrito = function() {
+      const prod = productos.find(p => p.id === idProductoViendo);
+      const itemEnCarrito = carrito.find(item => item.id === prod.id);
+      
+      if(itemEnCarrito) {
+        itemEnCarrito.cantidad++;
+      } else {
+        carrito.push({ ...prod, cantidad: 1 });
+      }
+      
+      guardarCarrito();
+      cerrarModal();
+      abrirCarrito(); // Lo llevamos a ver su carrito
+    }
+
+    window.modificarCantidad = function(index, suma) {
+      carrito[index].cantidad += suma;
+      if (carrito[index].cantidad <= 0) {
+        carrito.splice(index, 1); // Lo borra si llega a cero
+      }
+      guardarCarrito();
+      renderizarCarrito();
+    }
+
+    function guardarCarrito() {
+      localStorage.setItem('plantilla_carrito', JSON.stringify(carrito));
+      actualizarBadgeCarrito();
+    }
+
+    function actualizarBadgeCarrito() {
+      const total = carrito.reduce((acc, item) => acc + item.cantidad, 0);
+      document.getElementById('badge-carrito').innerText = total;
+    }
+
+    window.abrirCarrito = function() {
+      renderizarCarrito();
+      document.getElementById('overlay-carrito').classList.remove('hidden');
+      document.getElementById('panel-carrito').classList.remove('translate-x-full');
+    }
+
+    window.cerrarCarrito = function() {
+      document.getElementById('overlay-carrito').classList.add('hidden');
+      document.getElementById('panel-carrito').classList.add('translate-x-full');
+    }
+
+    function renderizarCarrito() {
+      const divItems = document.getElementById('items-carrito');
+      divItems.innerHTML = "";
+      let totalPagar = 0;
+
+      if (carrito.length === 0) {
+        divItems.innerHTML = `<p class="text-center text-gray-500 mt-10">Tu carrito está vacío.</p>`;
+      } else {
+        carrito.forEach((item, index) => {
+          const subtotal = Number(item.precio) * item.cantidad;
+          totalPagar += subtotal;
+          
+          divItems.innerHTML += `
+            <div class="flex items-center gap-4 bg-white border p-3 rounded-lg shadow-sm">
+              <img src="${item.imagen}" class="w-16 h-16 object-cover rounded bg-gray-50">
+              <div class="flex-1">
+                <h4 class="font-bold text-sm leading-tight text-gray-800">${item.nombre}</h4>
+                <p class="text-green-600 font-bold text-sm">$${item.precio}</p>
+              </div>
+              <div class="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+                <button onclick="modificarCantidad(${index}, -1)" class="w-6 h-6 flex items-center justify-center font-bold hover:bg-gray-200 rounded text-gray-600">-</button>
+                <span class="text-sm font-bold w-4 text-center">${item.cantidad}</span>
+                <button onclick="modificarCantidad(${index}, 1)" class="w-6 h-6 flex items-center justify-center font-bold hover:bg-gray-200 rounded text-gray-600">+</button>
+              </div>
+            </div>
+          `;
+        });
+      }
+      
+      document.getElementById('total-carrito').innerText = `$${totalPagar}`;
+    }
+
+    window.finalizarCompra = function(metodo) {
+      if (carrito.length === 0) return alert("¡Agregá productos al carrito primero!");
+      
+      let total = 0;
+      let texto = `*NUEVO PEDIDO DESDE LA WEB*%0A%0A`;
+      
+      carrito.forEach(item => {
+        const sub = Number(item.precio) * item.cantidad;
+        total += sub;
+        texto += `🛒 ${item.cantidad}x ${item.nombre} ($${sub})%0A`;
+      });
+      
+      texto += `%0A💰 *TOTAL: $${total}*%0A`;
+      
+      if (metodo === 'mp') {
+        texto += `%0AElijo pagar con transferencia/Mercado Pago.%0AYa te envío el comprobante al Alias: *${configGral.mp_alias}*`;
+      } else {
+        texto += `%0A¿Me confirmas disponibilidad y cómo hacemos con el pago/envío?`;
+      }
+
+      // Vaciar carrito luego de enviar
+      carrito = [];
+      guardarCarrito();
+      cerrarCarrito();
+      
+      // Abrir WhatsApp con el mensaje armado
+      window.open(`https://wa.me/${configGral.whatsapp}?text=${texto}`, '_blank');
+    }
+
     cargarDatos();
   </script>
 </body>
