@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo Tienda - Tu Marca</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .scroll-oculto { opacity: 0; transform: translateY(30px); transition: all 0.6s ease-out; }
+    .scroll-visible { opacity: 1; transform: translateY(0); }
+    .btn-categoria-activa { background-color: #1f2937; color: white; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans antialiased min-h-screen flex flex-col">
+
+  <nav class="bg-white py-4 px-6 shadow-sm flex justify-between items-center sticky top-0 z-40">
+    <div class="font-bold text-xl tracking-wide">MI TIENDA DEMO</div>
+    <div class="flex gap-4">
+      <a id="link-instagram" href="#" target="_blank" class="text-gray-600 hover:text-pink-600 transition text-xl"><i class="fa-brands fa-instagram"></i></a>
+      <a id="link-whatsapp" href="#" target="_blank" class="text-gray-600 hover:text-green-500 transition text-xl"><i class="fa-brands fa-whatsapp"></i></a>
+    </div>
+  </nav>
+
+  <header class="bg-gray-900 text-white py-20 px-6 text-center">
+    <h1 class="text-4xl md:text-5xl font-bold mb-4">Productos de Alta Calidad</h1>
+    <p class="text-gray-400 max-w-xl mx-auto mb-8">Descubrí nuestro catálogo. Ofrecemos la mejor calidad con envíos a todo el país y atención personalizada.</p>
+    <a href="#catalogo" class="bg-white text-gray-900 px-6 py-3 rounded-full font-bold hover:bg-gray-200 transition shadow">Ver Catálogo</a>
+  </header>
+
+  <main id="catalogo" class="py-16 px-6 max-w-7xl mx-auto w-full flex-grow">
+    <div class="max-w-md mx-auto mb-8 relative">
+      <input type="text" id="buscador" onkeyup="buscarProducto()" placeholder="Buscar producto..." class="w-full border border-gray-300 rounded-lg py-3 px-4 pl-12 focus:outline-none focus:ring-2 focus:ring-gray-800 shadow-sm">
+      <i class="fa-solid fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+    </div>
+
+    <div id="menu-categorias" class="flex flex-wrap justify-center gap-3 mb-12"></div>
+
+    <div id="grilla-productos" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <p class="text-center w-full col-span-full py-10 text-gray-500"><i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i><br>Cargando catálogo...</p>
+    </div>
+  </main>
+
+  <footer class="bg-white border-t border-gray-200 py-6 text-center text-gray-500 text-sm">
+    &copy; 2026 Creado por Vos. Demo de E-commerce.
+  </footer>
+
+  <div id="modal-producto" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl max-w-3xl w-full flex flex-col md:flex-row overflow-hidden shadow-2xl relative max-h-[90vh]">
+      <button onclick="cerrarModal()" class="absolute top-3 right-3 bg-white hover:bg-gray-200 text-gray-800 rounded-full w-8 h-8 flex items-center justify-center z-10 shadow"><i class="fa-solid fa-xmark"></i></button>
+      
+      <div class="md:w-1/2 bg-gray-100 flex items-center justify-center p-6 h-64 md:h-auto">
+        <img id="modal-img" src="" class="max-w-full max-h-full object-contain rounded drop-shadow-md">
+      </div>
+      
+      <div class="md:w-1/2 p-8 flex flex-col overflow-y-auto">
+        <p id="modal-cat" class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1"></p>
+        <h3 id="modal-titulo" class="text-3xl font-bold text-gray-900 mb-2"></h3>
+        <p id="modal-precio" class="text-2xl text-green-600 font-bold mb-4"></p>
+        <p id="modal-desc" class="text-gray-600 mb-8 text-sm leading-relaxed"></p>
+        
+        <div class="mt-auto flex flex-col gap-3">
+          <button onclick="alert('Función de carrito activada para la versión final.')" class="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-3 rounded-lg transition flex justify-center items-center gap-2">
+            <i class="fa-solid fa-cart-plus"></i> Añadir al Carrito
+          </button>
+          <a id="modal-btn-mp" href="#" target="_blank" class="w-full bg-[#009ee3] hover:bg-[#0089c7] text-white font-bold py-3 rounded-lg transition flex justify-center items-center gap-2">
+            <i class="fa-solid fa-handshake"></i> Comprar (Mercado Pago)
+          </a>
+          <a id="modal-btn-wpp" href="#" target="_blank" class="w-full bg-[#25D366] hover:bg-[#1ebd5a] text-white font-bold py-3 rounded-lg transition flex justify-center items-center gap-2">
+            <i class="fa-brands fa-whatsapp"></i> Consultar
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBoCjENuictaLnsXZtb1FM-73mk7FZhEEM",
+      authDomain: "e-commerse-8618e.firebaseapp.com",
+      projectId: "e-commerse-8618e",
+      storageBucket: "e-commerse-8618e.firebasestorage.app",
+      messagingSenderId: "481178573408",
+      appId: "1:481178573408:web:db6b2b9a9aa0c35eff8105",
+      measurementId: "G-YTZGC49LXJ"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    
+    let productos = [];
+    let categorias = [];
+    let configGral = { whatsapp: "541100000000", instagram: "https://instagram.com", mp_alias: "Alias no configurado" };
+
+    const observador = new IntersectionObserver((entradas) => {
+      entradas.forEach(e => { if (e.isIntersecting) e.target.classList.add('scroll-visible'); });
+    }, { threshold: 0.1 });
+
+    async function cargarDatos() {
+      // 1. Cargar Configuración
+      const configSnap = await getDoc(doc(db, "configuracion", "general"));
+      if(configSnap.exists()) configGral = configSnap.data();
+      aplicarConfiguracion();
+
+      // 2. Cargar Categorías
+      const catSnap = await getDocs(collection(db, "categorias"));
+      catSnap.forEach(d => categorias.push({ id: d.id, ...d.data() }));
+
+      // 3. Cargar Productos
+      const prodSnap = await getDocs(collection(db, "productos"));
+      prodSnap.forEach(d => productos.push({ id: d.id, ...d.data() }));
+
+      renderizarMenu();
+      filtrar('todos');
+    }
+
+    function aplicarConfiguracion() {
+      document.getElementById('link-instagram').href = configGral.instagram;
+      document.getElementById('link-whatsapp').href = `https://wa.me/${configGral.whatsapp}`;
+    }
+
+    function renderizarMenu() {
+      const menu = document.getElementById("menu-categorias");
+      menu.innerHTML = `<button onclick="filtrar('todos')" class="menu-btn btn-categoria-activa px-4 py-2 rounded-full border border-gray-300 text-sm font-semibold transition">Todos</button>`;
+      categorias.filter(c => !c.oculta).forEach(cat => {
+        menu.innerHTML += `<button onclick="filtrar('${cat.nombre}')" class="menu-btn text-gray-600 hover:bg-gray-100 px-4 py-2 rounded-full border border-gray-300 text-sm font-semibold transition">${cat.nombre}</button>`;
+      });
+    }
+
+    window.buscarProducto = function() {
+      const texto = document.getElementById("buscador").value.toLowerCase();
+      const filtrados = productos.filter(p => !categorias.find(c => c.nombre === p.categoria)?.oculta).filter(p => 
+        p.nombre.toLowerCase().includes(texto) || p.descripcion.toLowerCase().includes(texto)
+      );
+      renderizarProductos(filtrados);
+    }
+
+    window.filtrar = function(cat) {
+      document.querySelectorAll(".menu-btn").forEach(btn => {
+        btn.classList.remove("btn-categoria-activa", "bg-gray-900", "text-white");
+        btn.classList.add("text-gray-600");
+        if(btn.innerText.toLowerCase() === (cat === "todos" ? "todos" : cat.toLowerCase())) {
+          btn.classList.add("btn-categoria-activa", "bg-gray-900", "text-white");
+        }
+      });
+      const filtrados = cat === "todos" ? productos.filter(p => !categorias.find(c => c.nombre === p.categoria)?.oculta) : productos.filter(p => p.categoria === cat);
+      renderizarProductos(filtrados);
+    }
+
+    function renderizarProductos(items) {
+      const grilla = document.getElementById("grilla-productos");
+      grilla.innerHTML = "";
+      if (items.length === 0) { grilla.innerHTML = `<p class="col-span-full text-center py-10 text-gray-500">No hay productos en esta categoría.</p>`; return; }
+      
+      items.forEach(prod => {
+        const tarjeta = document.createElement('div');
+        tarjeta.className = "scroll-oculto bg-white rounded-xl p-4 shadow-sm hover:shadow-xl transition duration-300 border border-gray-100 cursor-pointer flex flex-col";
+        tarjeta.onclick = () => window.abrirModal(prod.id);
+        tarjeta.innerHTML = `
+          <div class="w-full aspect-square bg-gray-50 rounded-lg overflow-hidden mb-4 flex items-center justify-center p-4">
+            <img src="${prod.imagen}" loading="lazy" class="max-w-full max-h-full object-contain hover:scale-110 transition duration-500">
+          </div>
+          <p class="text-xs text-gray-400 font-bold uppercase mb-1">${prod.categoria}</p>
+          <h3 class="font-bold text-gray-800 text-lg leading-tight mb-2">${prod.nombre}</h3>
+          <p class="text-green-600 font-bold text-xl mt-auto">$${prod.precio}</p>
+        `;
+        grilla.appendChild(tarjeta);
+        observador.observe(tarjeta);
+      });
+    }
+
+    window.abrirModal = function(id) {
+      const prod = productos.find(p => p.id === id);
+      document.getElementById('modal-img').src = prod.imagen;
+      document.getElementById('modal-cat').innerText = prod.categoria;
+      document.getElementById('modal-titulo').innerText = prod.nombre;
+      document.getElementById('modal-precio').innerText = `$${prod.precio}`;
+      document.getElementById('modal-desc').innerText = prod.descripcion;
+      
+      document.getElementById('modal-btn-wpp').href = `https://wa.me/${configGral.whatsapp}?text=Hola! Quiero info sobre: ${encodeURIComponent(prod.nombre)}`;
+      document.getElementById('modal-btn-mp').onclick = () => alert(`Alias de Mercado Pago para abonar:\n${configGral.mp_alias}`);
+      
+      document.getElementById('modal-producto').classList.remove('hidden');
+      document.getElementById('modal-producto').classList.add('flex');
+    }
+
+    window.cerrarModal = function() { document.getElementById('modal-producto').classList.add('hidden'); }
+    cargarDatos();
+  </script>
+</body>
+</html>
