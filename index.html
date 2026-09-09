@@ -302,33 +302,69 @@
       document.getElementById('total-carrito').innerText = `$${totalPagar}`;
     }
 
-    window.finalizarCompra = function(metodo) {
+    window.finalizarCompra = async function(metodo) {
       if (carrito.length === 0) return alert("¡Agregá productos al carrito primero!");
       
-      let total = 0;
-      let texto = `*NUEVO PEDIDO DESDE LA WEB*%0A%0A`;
-      
-      carrito.forEach(item => {
-        const sub = Number(item.precio) * item.cantidad;
-        total += sub;
-        texto += `🛒 ${item.cantidad}x ${item.nombre} ($${sub})%0A`;
-      });
-      
-      texto += `%0A💰 *TOTAL: $${total}*%0A`;
-      
-      if (metodo === 'mp') {
-        texto += `%0AElijo pagar con transferencia/Mercado Pago.%0AYa te envío el comprobante al Alias: *${configGral.mp_alias}*`;
-      } else {
+      if (metodo === 'wpp') {
+        // EL BOTÓN VERDE: Lógica normal de solo enviar por WhatsApp
+        let total = 0;
+        let texto = `*NUEVO PEDIDO DESDE LA WEB*%0A%0A`;
+        
+        carrito.forEach(item => {
+          const sub = Number(item.precio) * item.cantidad;
+          total += sub;
+          texto += `🛒 ${item.cantidad}x ${item.nombre} ($${sub})%0A`;
+        });
+        
+        texto += `%0A💰 *TOTAL: $${total}*%0A`;
         texto += `%0A¿Me confirmas disponibilidad y cómo hacemos con el pago/envío?`;
-      }
 
-      // Vaciar carrito luego de enviar
-      carrito = [];
-      guardarCarrito();
-      cerrarCarrito();
-      
-      // Abrir WhatsApp con el mensaje armado
-      window.open(`https://wa.me/${configGral.whatsapp}?text=${texto}`, '_blank');
+        carrito = [];
+        guardarCarrito();
+        cerrarCarrito();
+        window.open(`https://wa.me/${configGral.whatsapp}?text=${texto}`, '_blank');
+      } 
+      else if (metodo === 'mp') {
+        // EL BOTÓN AZUL: Nueva lógica conectada a Vercel y Mercado Pago
+        try {
+          // 1. Cambiamos el texto del botón para que parezca que está cargando
+          const btn = document.querySelector(`button[onclick="finalizarCompra('mp')"]`);
+          const textoOriginal = btn.innerHTML;
+          btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Conectando con Mercado Pago...`;
+          btn.disabled = true;
+
+          // 2. Adaptamos tu carrito al formato exacto que exige Mercado Pago
+          const itemsParaMP = carrito.map(item => ({
+            title: item.nombre,
+            unit_price: Number(item.precio),
+            quantity: item.cantidad,
+            currency_id: "ARS"
+          }));
+
+          // 3. Llamamos a tu servidor oculto en Vercel (la carpeta api)
+          const response = await fetch('/api/checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: itemsParaMP })
+          });
+
+          const data = await response.json();
+
+          // 4. Si el servidor nos devuelve el link, mandamos al cliente a pagar
+          if (data.link_pago) {
+            carrito = [];
+            guardarCarrito();
+            window.location.href = data.link_pago; 
+          } else {
+            alert("Error al generar el pago. Intentá de nuevo.");
+            btn.innerHTML = textoOriginal;
+            btn.disabled = false;
+          }
+        } catch (error) {
+          alert("Hubo un error de conexión con el servidor.");
+          console.error(error);
+        }
+      }
     }
 
     cargarDatos();
