@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   const { items } = req.body;
   
   // ACA IRÁ TU CREDENCIAL REAL DE MERCADO PAGO LUEGO
-  const ACCESS_TOKEN = "TEST-8032...-TOKEN-FALSO"; 
+  const ACCESS_TOKEN = "APP_USR-2186485771338812-090920-a65b1d13ee255c188cbafbb1f1e59dfa-3676709883"; 
 
   try {
     // 3. Le pedimos a Mercado Pago que cree un link de cobro
